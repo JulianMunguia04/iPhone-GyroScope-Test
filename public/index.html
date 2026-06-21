@@ -1,42 +1,112 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Gyroscope Sender</title>
+    <title>Gyroscope Drawing Canvas</title>
+    <style>
+        html, body {
+            margin: 0;
+            overflow: hidden;
+            background: #111;
+        }
+
+        #start {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            padding: 12px 24px;
+            font-size: 18px;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
 </head>
 <body>
-    <button id="start">Start Gyroscope</button>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
+<button id="start">Start Gyroscope Drawing</button>
+<canvas id="canvas"></canvas>
 
-        document.getElementById("start").onclick = async () => {
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-            // Required on iPhone (iOS 13+)
-            if (
-                typeof DeviceMotionEvent !== "undefined" &&
-                typeof DeviceMotionEvent.requestPermission === "function"
-            ) {
-                const permission =
-                    await DeviceMotionEvent.requestPermission();
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-                if (permission !== "granted") {
-                    alert("Permission denied");
-                    return;
-                }
-            }
+ctx.lineWidth = 4;
+ctx.lineCap = "round";
+ctx.strokeStyle = "#00ff88";
 
-            window.addEventListener("deviceorientation", (event) => {
+let x = canvas.width / 2;
+let y = canvas.height / 2;
 
-                socket.emit("gyro", {
-                    alpha: event.alpha,
-                    beta: event.beta,
-                    gamma: event.gamma,
-                    timestamp: Date.now()
-                });
+let lastX = x;
+let lastY = y;
 
-            });
-        };
-    </script>
+function drawLine(newX, newY) {
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(newX, newY);
+    ctx.stroke();
+
+    lastX = newX;
+    lastY = newY;
+}
+
+document.getElementById("start").onclick = async () => {
+
+    // iPhone permission
+    if (
+        typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function"
+    ) {
+        const permission =
+            await DeviceOrientationEvent.requestPermission();
+
+        if (permission !== "granted") {
+            alert("Permission denied");
+            return;
+        }
+    }
+
+    document.getElementById("start").style.display = "none";
+
+    window.addEventListener("deviceorientation", (event) => {
+
+        const beta = event.beta || 0;   // -180 to 180
+        const gamma = event.gamma || 0; // -90 to 90
+
+        // Sensitivity
+        const speed = 0.8;
+
+        x += gamma * speed * 0.1;
+        y += beta * speed * 0.1;
+
+        // Keep inside canvas
+        x = Math.max(0, Math.min(canvas.width, x));
+        y = Math.max(0, Math.min(canvas.height, y));
+
+        drawLine(x, y);
+    });
+};
+
+// Resize handling
+window.addEventListener("resize", () => {
+    const image = ctx.getImageData(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    ctx.putImageData(image, 0, 0);
+});
+</script>
+
 </body>
 </html>
