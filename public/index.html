@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gyroscope Sender</title>
+</head>
+<body>
+    <button id="start">Start Gyroscope</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        document.getElementById("start").onclick = async () => {
+
+            // Required on iPhone (iOS 13+)
+            if (
+                typeof DeviceMotionEvent !== "undefined" &&
+                typeof DeviceMotionEvent.requestPermission === "function"
+            ) {
+                const permission =
+                    await DeviceMotionEvent.requestPermission();
+
+                if (permission !== "granted") {
+                    alert("Permission denied");
+                    return;
+                }
+            }
+
+            window.addEventListener("deviceorientation", (event) => {
+
+                socket.emit("gyro", {
+                    alpha: event.alpha,
+                    beta: event.beta,
+                    gamma: event.gamma,
+                    timestamp: Date.now()
+                });
+
+            });
+        };
+    </script>
+</body>
+</html>
